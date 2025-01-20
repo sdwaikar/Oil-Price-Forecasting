@@ -1,0 +1,181 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+Project 2
+Group Members - Shreyas Waikar, Rishabh Kanodiya, Snigdha Pandit, Arya Satam
+
+1.
+```{r}
+# Load the necessary libraries
+library(readr)
+library(ggplot2)
+
+# Read the data
+oil_data <- read_csv("D:/UB/509 Sdm2/oil.csv")
+
+# Convert the 'date' column to a date format
+oil_data$date <- as.Date(oil_data$date)
+
+head(oil_data)
+```
+
+2.
+```{r}
+# Plot the time series as is
+ggplot(data = oil_data, aes(x = date, y = dcoilwtico)) + geom_line(color = "blue") + 
+  labs(title = "Daily Oil Prices Over Time",
+       x = "Date", y = "Oil Price (USD)") + theme_minimal()
+```
+
+3.
+When working with time series data such as daily oil prices, it is essential to address any missing data points to ensure the accuracy of your analysis. Popular techniques for data imputation in time series include:
+Forward Filling (Last Observation Carried Forward): This approach uses the most recent non-null value to fill subsequent missing entries.
+Backward Filling: This method fills missing values by using the subsequent available data point, effectively the reverse of forward filling.
+Linear Interpolation: This technique calculates missing values by creating a linear path between existing data points, providing a smooth transition between them.
+Time Series Specific Methods (e.g., Seasonal Decomposition): For more intricate data sets, methods that analyze and account for seasonal and trend variations are employed.
+For the oil price data specifically, linear interpolation is a straightforward yet effective choice. It fills gaps by drawing straight lines between known values, thus maintaining a natural progression without the need for complex models.
+```{r}
+# Load necessary libraries
+library(tidyr)
+library(zoo)
+
+# Convert 'date' to Date format
+oil_data$date <- as.Date(oil_data$date)
+
+# Impute missing data using linear interpolation
+oil_data$dcoilwtico <- na.approx(oil_data$dcoilwtico, na.rm = FALSE)
+```
+
+4.
+```{r}
+ggplot(oil_data, aes(x = date, y = dcoilwtico)) + geom_line() +
+  labs(title = "Oil Prices with Imputed Values", x = "Date", y = "Price (USD)") + 
+  theme_minimal()
+```
+The oil price data exhibits noticeable trends and potential seasonal variations:
+Trend
+There is a pronounced decline in prices from mid-2014 to early 2016, marking a significant drop.
+Post early 2016, the prices appear to stabilize and show a slow upward movement through 2017.
+Seasonality
+Determining seasonality from the provided plot alone is challenging. While oil prices might be affected by seasonal factors like higher travel demand during summer months or increased heating oil usage in winter, these patterns may not be immediately apparent from the plot. A more thorough analysis or reviewing data over an extended period might be necessary to confirm seasonality.
+
+5.
+ETS models, short for Error, Trend, and Seasonality, are a class of time series forecasting techniques that extend exponential smoothing. These models are particularly effective for datasets displaying trends and seasonal patterns.
+Error Types: The model can incorporate either additive or multiplicative errors, which affects how residuals are computed relative to the series level.
+Trend Types: Options include no trend, additive, or multiplicative trends. An additive trend implies linear changes over time, whereas a multiplicative trend suggests changes that scale with the series.
+Seasonality Types: These can also be non-existent, additive, or multiplicative, depending on whether the seasonal fluctuations are constant or vary in proportion to the time series.
+ETS models leverage likelihood-based methods to automatically tune the smoothing parameters and initial conditions. These models are available in several statistical software platforms, including R, where they are accessible through the forecast package.
+
+The Holt-Winters method is an advancement of exponential smoothing designed to address seasonality in addition to capturing overall level and trend within a dataset. This method is particularly effective for handling data characterized by seasonal fluctuations.
+Level: Represents the average value within the series.
+Trend: Indicates the direction and rate of change within the data, either increasing or decreasing.
+Seasonal: Refers to the recurring short-term cycles observed in the series.
+The Holt-Winters method is available in two forms:
+Additive: Appropriate for when seasonal variations are consistent and relatively stable throughout the series.
+Multiplicative: Best used when seasonal variations vary in intensity proportionate to the time series.
+This approach employs three distinct types of smoothing—level, trend, and seasonal—which involve calculating weighted averages of past observations, where the weights decrease exponentially over time.
+
+Implementation in R
+Both ETS and Holt-Winters models can be easily implemented in R using the forecast package. For instance:
+```{r}
+# Assuming 'oil_data' is our data frame and 'date' and 'dcoilwtico' are the columns
+# First, make sure that 'date' is in Date format and 'dcoilwtico' is numeric
+oil_data$dcoilwtico <- as.numeric(oil_data$dcoilwtico)
+
+# Create a ts object from the 'dcoilwtico' column
+# Frequency could be 365 (daily data), 12 (monthly data), etc.
+oil_ts <- ts(oil_data$dcoilwtico, frequency=365, start=c(2013,1))
+
+# Check the ts object
+print(head(oil_ts))
+library(forecast)
+
+# Fit an ETS model
+ets_fit <- ets(oil_ts)
+
+# Check the model summary
+summary(ets_fit)
+
+# Optional: Plot the model with forecasts
+plot(forecast(ets_fit))
+
+# Fitting a Holt-Winters model, we start with the default which includes both trend and seasonal components
+# This will use both additive trend and additive seasonal components by default
+hw_model <- stlf(oil_ts)
+
+# Plot the model with forecasts; let's forecast for the next 30 days as an example
+hw_forecast <- forecast(hw_model, h=30)
+plot(hw_forecast)
+
+# Additional outputs can include confidence intervals on the forecasts
+plot(hw_forecast, include=20)  # Including last 20 points of the historical data for context
+```
+
+6.
+Given the oil price data's evident trend and possible seasonality influenced by economic, political, or seasonal factors:
+Holt-Winters Model: This model is well-suited for the data due to its ability to handle both trend and potential seasonal variations. Depending on whether the seasonal changes are consistent or vary over time, you would select either the additive or multiplicative version of the model.
+ETS Model: This model might also be fitting, especially if the errors and seasonal patterns in the data are believed to fluctuate over time. The ETS model can automatically identify and apply the most suitable configurations of error, trend, and seasonality—whether additive or multiplicative.
+Both models are adept at managing the trends and seasonality observed in the oil price data. The selection between these models should be guided by the specific nuances of the data and your predictive objectives. If these models don't yield the desired outcomes, considering more sophisticated models might be necessary.
+
+7.
+```{r}
+library(forecast)
+hw_model <- stlf(oil_ts)
+ets_model <- ets(oil_ts)
+
+#Checking Model Adequacy
+# Plotting residuals for Holt-Winters
+plot(hw_model$residuals)
+abline(h = 0, col = "red")
+
+# Plotting residuals for ETS
+plot(residuals(ets_model))
+abline(h = 0, col = "red")
+
+#Statistical Tests
+Box.test(hw_model$residuals, lag = 20, type = "Ljung-Box")
+Box.test(residuals(ets_model), lag = 20, type = "Ljung-Box")
+```
+
+```{r}
+# Accuracy of Holt-Winters
+hw_accuracy <- accuracy(hw_model)
+print(hw_accuracy)
+
+# Accuracy of ETS
+ets_accuracy <- accuracy(ets_model)
+print(ets_accuracy)
+```
+
+```{r}
+# Forecasting with Holt-Winters
+hw_forecast <- forecast(hw_model, h=50)
+plot(hw_forecast)
+
+# Forecasting with ETS
+ets_forecast <- forecast(ets_model, h=50)
+plot(ets_forecast)
+```
+
+8.
+Here's a comparison of their performance based on the metrics shown:
+
+Root Mean Squared Error (RMSE)
+Holt-Winters: RMSE = 0.9765624
+ETS: RMSE = 1.176659
+Lower RMSE values indicate a model that better fits the data, minimizing the square root of average squared differences between predicted and actual observations. Here, the Holt-Winters model has a lower RMSE, suggesting it performs better in terms of prediction accuracy.
+
+Mean Absolute Error (MAE)
+Holt-Winters: MAE = 0.7550432
+ETS: MAE = 0.8958282
+MAE measures the average magnitude of the errors in a set of predictions, without considering their direction. Again, Holt-Winters shows a lower MAE, indicating it generally makes smaller errors in its predictions than the ETS model.
+
+Mean Absolute Percentage Error (MAPE)
+Holt-Winters: MAPE = 1.300276
+ETS: MAPE = 1.549556
+MAPE expresses accuracy as a percentage, and lower values are better. The Holt-Winters model has a lower MAPE, signifying it has a smaller average percentage error.
+
+Conclusion
+Based on these metrics, particularly focusing on RMSE, the Holt-Winters model outperforms the ETS model in this scenario. It provides more accurate and reliable forecasts according to the data provided. If reducing forecasting error is crucial for your application, Holt-Winters seems to be the preferable choice.
